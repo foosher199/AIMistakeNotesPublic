@@ -32,7 +32,6 @@ npx supabase@latest db push
 1. 启用 Email Provider。
 2. 如需游客体验，启用 Anonymous Sign-Ins。
 3. 在 URL Configuration 中把 Site URL 设为 `APP_URL`，并添加需要的 Redirect URL。
-4. Apple 和微信登录仅在配置对应 Provider/密钥后可用。
 
 迁移会创建私有 Storage Bucket `mistake-private-images`，无需手工创建公开 Bucket。
 
@@ -49,8 +48,6 @@ npx supabase@latest db push
 | `APP_URL` | 运行时 | 完整站点地址，如 `https://example.com` |
 | `CRON_SECRET` | 运行时 | 维护接口密钥，可用 `openssl rand -hex 32` 生成 |
 | `DEEPSEEK_API_KEY` | 运行时、可选 | 启用错因分析和举一反三 |
-| `WECHAT_APP_ID` | 运行时、可选 | 微信应用 ID |
-| `WECHAT_APP_SECRET` | 运行时、可选 | 微信应用 Secret |
 
 更换 `NEXT_PUBLIC_*` 后必须重新构建前端。
 

@@ -1,15 +1,16 @@
-# AIMistakeLib
+# AIMistakeNotesPublic
 
-一个基于 Next.js 和 Supabase 的 AI 错题管理应用。用户可以上传题目图片，通过阿里云视觉模型识别题目，并进行错因分析、复习统计和练习卷生成。
+一个面向个人自托管的 AI 错题管理应用，基于 Next.js 和 Supabase 构建。项目不包含积分、付费或邀请码体系，模型调用费用由部署者自己的 API 账户承担。
 
 ## 功能
 
-- 阿里云 DashScope 图片识别与题目解析
-- 邮箱、匿名用户及可选的微信/Apple 登录
-- 私有图片存储和基于 RLS 的用户数据隔离
-- 错因分析、举一反三、复习状态和学习统计
-- 练习卷创建、保存与打印
-- 异步识别任务、失败重试和任务历史
+- 使用阿里云 DashScope `qwen3.6-plus` 识别图片中的题目、答案和解析
+- 支持 Supabase 邮箱密码登录和匿名游客模式
+- 使用私有 Supabase Storage 存储图片，并通过 RLS 隔离不同用户的数据
+- 支持错题录入、编辑、复习、掌握状态和学习统计
+- 可选使用 DeepSeek 进行 AI 错因分析和变式题生成
+- 支持创建、保存、查看和打印错题练习卷
+- 支持后台识别任务、状态查询、失败重试和任务历史
 
 ## 技术栈
 
@@ -24,7 +25,7 @@
 
 ```bash
 git clone <your-fork-or-repository-url>
-cd AIMistakeLib
+cd AIMistakeNotesPublic
 npm ci
 cp .env.example .env.local
 ```
@@ -53,16 +54,15 @@ npm run dev
 
 ## 环境变量
 
-| 变量 | 必需 | 可公开 | 用途 |
+| 变量 | 必需 | 浏览器可见 | 用途 |
 | --- | --- | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | 是 | 是 | Supabase 项目 URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | 是 | 是 | 受 RLS 保护的浏览器端 Key |
-| `SUPABASE_SERVICE_ROLE_KEY` | 是 | 否 | 服务端管理操作，会绕过 RLS |
-| `ALIBABA_API_KEY` | 是 | 否 | 图片识别 |
-| `APP_URL` | 生产环境是 | 是 | 后台识别任务回调地址 |
-| `CRON_SECRET` | 建议 | 否 | 维护任务 Bearer Token |
-| `DEEPSEEK_API_KEY` | 否 | 否 | 错因分析和举一反三 |
-| `WECHAT_APP_ID` / `WECHAT_APP_SECRET` | 否 | App ID 可公开，Secret 不可 | 微信登录 |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | 是 | 是 | 浏览器端 Supabase Key，必须配合 RLS 使用 |
+| `SUPABASE_SERVICE_ROLE_KEY` | 是 | 否 | 服务端高权限 Key，会绕过 RLS |
+| `ALIBABA_API_KEY` | 是 | 否 | 调用 DashScope 进行图片识别 |
+| `APP_URL` | 生产环境是 | 是 | 应用完整地址，供后台识别任务回调 |
+| `CRON_SECRET` | 建议 | 否 | 保护后台维护接口的 Bearer Token |
+| `DEEPSEEK_API_KEY` | 否 | 否 | 启用可选的错因分析和变式题生成 |
 
 所有变量均在 `.env.example` 中列出。不要提交 `.env.local` 或生产密钥。
 
