@@ -1,0 +1,266 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 216 100% 98%;
+    --foreground: 218 54% 20%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 218 54% 20%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 218 54% 20%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 214 100% 97%;
+    --secondary-foreground: 221 83% 53%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 152 81% 96%;
+    --accent-foreground: 161 94% 24%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214 56% 91%;
+    --input: 214 56% 91%;
+    --ring: 217 91% 60%;
+
+    --radius: 1rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+  }
+}
+
+@layer components {
+  .jelly-button {
+    border: 1px solid rgb(255 255 255 / 65%);
+    background: linear-gradient(180deg, #60a5fa 0%, #3b82f6 72%, #2563eb 100%);
+    color: white;
+    box-shadow:
+      inset 0 2px 1px rgb(255 255 255 / 48%),
+      inset 0 -2px 5px rgb(30 64 175 / 14%),
+      0 2px 0 #2563eb,
+      0 8px 18px rgb(37 99 235 / 16%);
+    transition: transform 150ms ease, box-shadow 150ms ease, filter 150ms ease;
+  }
+
+  .jelly-button:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.04);
+    box-shadow:
+      inset 0 2px 1px rgb(255 255 255 / 52%),
+      inset 0 -2px 5px rgb(30 64 175 / 12%),
+      0 3px 0 #2563eb,
+      0 10px 20px rgb(37 99 235 / 18%);
+  }
+
+  .jelly-button:active {
+    transform: translateY(2px) scale(0.99);
+    filter: brightness(0.98);
+    box-shadow:
+      inset 0 2px 5px rgb(30 64 175 / 18%),
+      0 1px 0 #2563eb,
+      0 3px 8px rgb(37 99 235 / 14%);
+  }
+
+  .jelly-outline,
+  .jelly-secondary {
+    border: 1px solid #dce7f5;
+    color: #2563eb;
+    box-shadow:
+      inset 0 1px 1px rgb(255 255 255 / 85%),
+      0 3px 0 #bfdbfe,
+      0 6px 12px rgb(30 64 100 / 9%);
+    transition: transform 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+  }
+
+  .jelly-outline {
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  }
+
+  .jelly-secondary {
+    background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+  }
+
+  .jelly-outline:hover,
+  .jelly-secondary:hover {
+    transform: translateY(-1px);
+    border-color: #93c5fd;
+    background-color: #eff6ff;
+    box-shadow:
+      inset 0 1px 1px rgb(255 255 255 / 90%),
+      0 4px 0 #bfdbfe,
+      0 8px 15px rgb(30 64 100 / 12%);
+  }
+
+  .jelly-outline:active,
+  .jelly-secondary:active {
+    transform: translateY(2px) scale(0.99);
+    box-shadow:
+      inset 0 2px 4px rgb(30 64 100 / 11%),
+      0 1px 0 #bfdbfe,
+      0 3px 7px rgb(30 64 100 / 9%);
+  }
+
+  .dashboard-shell .jelly-button {
+    border: 1px solid #3b82f6;
+    background: #3b82f6;
+    box-shadow: 0 2px 5px rgb(30 64 100 / 13%);
+    transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+  }
+
+  .dashboard-shell .jelly-button:hover {
+    transform: none;
+    border-color: #2563eb;
+    background: #2563eb;
+    filter: none;
+    box-shadow: 0 3px 8px rgb(30 64 100 / 15%);
+  }
+
+  .dashboard-shell .jelly-button:active {
+    transform: none;
+    border-color: #1e40af;
+    background: #1e40af;
+    filter: none;
+    box-shadow: 0 1px 3px rgb(30 64 100 / 13%);
+  }
+
+  .dashboard-shell .jelly-outline,
+  .dashboard-shell .jelly-secondary {
+    border: 1px solid #dce7f5;
+    color: #2563eb;
+    box-shadow: none;
+    transition: background-color 150ms ease, border-color 150ms ease;
+  }
+
+  .dashboard-shell .jelly-outline {
+    background: #ffffff;
+  }
+
+  .dashboard-shell .jelly-secondary {
+    background: #eff6ff;
+  }
+
+  .dashboard-shell .jelly-outline:hover,
+  .dashboard-shell .jelly-secondary:hover {
+    transform: none;
+    border-color: #bfdbfe;
+    background: #f8fafc;
+    box-shadow: none;
+  }
+
+  .dashboard-shell .jelly-outline:active,
+  .dashboard-shell .jelly-secondary:active {
+    transform: none;
+    background: #dbeafe;
+    box-shadow: none;
+  }
+
+  .dashboard-nav-item {
+    position: relative;
+    border: 1px solid transparent;
+    background: transparent;
+    color: #475569;
+    box-shadow: none;
+    transition: color 150ms ease, background-color 150ms ease;
+  }
+
+  .dashboard-nav-item svg {
+    color: #3b82f6;
+  }
+
+  .dashboard-nav-item:hover {
+    background: #eff6ff;
+    border-color: transparent;
+    color: #2563eb;
+    box-shadow: none;
+  }
+
+  .dashboard-nav-item:active {
+    background: #dbeafe;
+    box-shadow: none;
+  }
+
+  .dashboard-nav-item.is-active {
+    border-color: transparent;
+    background: linear-gradient(90deg, #eff6ff 0%, #dbeafe 100%);
+    color: #2563eb;
+    box-shadow: none;
+  }
+
+  .dashboard-nav-item.is-active::before {
+    position: absolute;
+    top: 0.45rem;
+    bottom: 0.45rem;
+    left: -0.75rem;
+    width: 0.25rem;
+    border-radius: 9999px;
+    background: #3b82f6;
+    box-shadow: 0 0 8px rgb(59 130 246 / 20%);
+    content: '';
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .jelly-button,
+    .jelly-outline,
+    .jelly-secondary,
+    .dashboard-nav-item {
+      transition: none;
+    }
+
+    .jelly-button:hover,
+    .jelly-button:active,
+    .jelly-outline:hover,
+    .jelly-outline:active,
+    .jelly-secondary:hover,
+    .jelly-secondary:active,
+    .dashboard-nav-item:hover,
+    .dashboard-nav-item:active {
+      transform: none;
+    }
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+}

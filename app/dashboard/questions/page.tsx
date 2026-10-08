@@ -1,0 +1,111 @@
+'use client'
+
+import { useState, useEffect, useSyncExternalStore } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/hooks/useAuth'
+import { QuestionList } from '@/components/questions/QuestionList'
+import { QuestionForm } from '@/components/upload/QuestionForm'
+import { Button } from '@/components/ui/button'
+import type { Question } from '@/types/database'
+import { FileText, Plus, Loader2 } from 'lucide-react'
+
+const subscribeToLocation = () => () => undefined
+const getWorksheetMode = () =>
+  new URLSearchParams(window.location.search).get('mode') === 'worksheet'
+const getServerWorksheetMode = () => false
+
+export default function QuestionsPage() {
+  const router = useRouter()
+  const { user, loading } = useAuth()
+  const [formOpen, setFormOpen] = useState(false)
+  const [editingQuestion, setEditingQuestion] = useState<Question | undefined>()
+  const worksheetMode = useSyncExternalStore(
+    subscribeToLocation,
+    getWorksheetMode,
+    getServerWorksheetMode
+  )
+
+  // 检查登录状态
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/')
+    }
+  }, [user, loading, router])
+
+  // 加载中或未登录时显示加载状态
+  if (loading || !user) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-[#3b82f6] animate-spin mx-auto mb-4" />
+          <p className="text-[#64748b]">加载中...</p>
+        </div>
+      </div>
+    )
+  }
+
+  const handleEdit = (question: Question) => {
+    setEditingQuestion(question)
+    setFormOpen(true)
+  }
+
+  const handleAdd = () => {
+    setEditingQuestion(undefined)
+    setFormOpen(true)
+  }
+
+  const handleFormClose = (open: boolean) => {
+    setFormOpen(open)
+    if (!open) {
+      // 关闭时清空编辑状态
+      setEditingQuestion(undefined)
+    }
+  }
+
+  return (
+    <div>
+      <section className="rounded-[26px] border border-[#dce8f3] bg-white p-5 shadow-[0_12px_34px_rgba(58,108,150,0.06)] sm:p-6">
+        {/* 头部 */}
+        <div className="mb-7 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#eaf3ff] text-[#3577d4]">
+              <FileText className="h-5 w-5" />
+            </span>
+            <h1 className="text-2xl font-bold text-[#172b4d]">我的错题</h1>
+          </div>
+
+          <Button
+            onClick={handleAdd}
+            variant="jelly"
+            className="rounded-full px-6"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            手动添加
+          </Button>
+        </div>
+
+        {worksheetMode && (
+          <div className="mb-5 flex items-start gap-3 rounded-2xl border border-[#d3e5fa] bg-[#f3f8ff] px-4 py-3 text-sm text-[#3577d4]">
+            <FileText className="mt-0.5 h-5 w-5 shrink-0" />
+            <div>
+              <p className="font-semibold">选择练习卷题目</p>
+              <p className="mt-0.5 text-[#64748b]">
+                勾选下方题目，选中后点击“生成练习卷”。
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* 题目列表 */}
+        <QuestionList onEdit={handleEdit} />
+      </section>
+
+      {/* 题目表单 */}
+      <QuestionForm
+        open={formOpen}
+        onOpenChange={handleFormClose}
+        question={editingQuestion}
+      />
+    </div>
+  )
+}

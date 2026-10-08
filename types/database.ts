@@ -1,0 +1,578 @@
+/**
+ * Supabase Database Types
+ *
+ * 说明：本文件定义了 Supabase 数据库的完整 TypeScript 类型
+ * 可以使用 Supabase CLI 自动生成：
+ * npx supabase gen types typescript --project-id <your-project-id> > types/database.ts
+ */
+
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+/**
+ * 数据库 Schema 定义
+ */
+export interface Database {
+  public: {
+    Tables: {
+      /**
+       * 用户扩展信息表
+       */
+      mistake_profiles: {
+        Row: {
+          id: string
+          username: string | null
+          avatar_url: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          username?: string | null
+          avatar_url?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          username?: string | null
+          avatar_url?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'mistake_profiles_id_fkey'
+            columns: ['id']
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      /**
+       * 错题记录表
+       */
+      mistake_questions: {
+        Row: {
+          id: string
+          content: string
+          subject: string
+          category: string
+          difficulty: 'easy' | 'medium' | 'hard'
+          answer: string
+          user_answer: string | null
+          explanation: string | null
+          image_url: string | null
+          review_count: number
+          is_mastered: boolean
+          last_reviewed: string | null
+          mistake_reason: string[] | null
+          mistake_reason_detail: string | null
+          mistake_reason_advice: string | null
+          created_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          content: string
+          subject: string
+          category: string
+          difficulty: 'easy' | 'medium' | 'hard'
+          answer: string
+          user_answer?: string | null
+          explanation?: string | null
+          image_url?: string | null
+          review_count?: number
+          is_mastered?: boolean
+          last_reviewed?: string | null
+          mistake_reason?: string[] | null
+          mistake_reason_detail?: string | null
+          mistake_reason_advice?: string | null
+          created_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          content?: string
+          subject?: string
+          category?: string
+          difficulty?: 'easy' | 'medium' | 'hard'
+          answer?: string
+          user_answer?: string | null
+          explanation?: string | null
+          image_url?: string | null
+          review_count?: number
+          is_mastered?: boolean
+          last_reviewed?: string | null
+          mistake_reason?: string[] | null
+          mistake_reason_detail?: string | null
+          mistake_reason_advice?: string | null
+          created_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'mistake_questions_user_id_fkey'
+            columns: ['user_id']
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      /**
+       * 草稿/待处理题目表
+       * 图片识别后的临时存储，用户保存后才移入 mistake_questions
+       */
+      mistake_drafts: {
+        Row: {
+          id: string
+          user_id: string
+          content: string
+          subject: string
+          category: string
+          difficulty: 'easy' | 'medium' | 'hard'
+          answer: string
+          explanation: string | null
+          confidence: number | null
+          image_url: string | null
+          source_image_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          content: string
+          subject: string
+          category: string
+          difficulty: 'easy' | 'medium' | 'hard'
+          answer: string
+          explanation?: string | null
+          confidence?: number | null
+          image_url?: string | null
+          source_image_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          content?: string
+          subject?: string
+          category?: string
+          difficulty?: 'easy' | 'medium' | 'hard'
+          answer?: string
+          explanation?: string | null
+          confidence?: number | null
+          image_url?: string | null
+          source_image_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'mistake_drafts_user_id_fkey'
+            columns: ['user_id']
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      /**
+       * AI生成的练习题目表
+       */
+      ai_generated_questions: {
+        Row: {
+          id: string
+          user_id: string
+          source_question_id: string | null
+          content: string
+          subject: string
+          category: string
+          difficulty: 'easy' | 'medium' | 'hard'
+          answer: string
+          explanation: string | null
+          feedback_status: 'pending' | 'valid' | 'invalid'
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          source_question_id?: string | null
+          content: string
+          subject: string
+          category: string
+          difficulty: 'easy' | 'medium' | 'hard'
+          answer: string
+          explanation?: string | null
+          feedback_status?: 'pending' | 'valid' | 'invalid'
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          source_question_id?: string | null
+          content?: string
+          subject?: string
+          category?: string
+          difficulty?: 'easy' | 'medium' | 'hard'
+          answer?: string
+          explanation?: string | null
+          feedback_status?: 'pending' | 'valid' | 'invalid'
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'ai_generated_questions_user_id_fkey'
+            columns: ['user_id']
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'ai_generated_questions_source_question_id_fkey'
+            columns: ['source_question_id']
+            referencedRelation: 'mistake_questions'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      /**
+       * 用户反馈表
+       */
+      mistake_feedbacks: {
+        Row: {
+          id: string
+          user_id: string | null
+          email: string | null
+          category: 'bug' | 'feature' | 'improvement' | 'other'
+          subject: string
+          content: string
+          status: 'pending' | 'processing' | 'resolved' | 'closed'
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string | null
+          email?: string | null
+          category: 'bug' | 'feature' | 'improvement' | 'other'
+          subject: string
+          content: string
+          status?: 'pending' | 'processing' | 'resolved' | 'closed'
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          email?: string | null
+          category?: 'bug' | 'feature' | 'improvement' | 'other'
+          subject?: string
+          content?: string
+          status?: 'pending' | 'processing' | 'resolved' | 'closed'
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'mistake_feedbacks_user_id_fkey'
+            columns: ['user_id']
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      mistake_images: {
+        Row: {
+          id: string
+          user_id: string
+          storage_path: string
+          original_filename: string | null
+          mime_type: 'image/jpeg' | 'image/png' | 'image/webp'
+          file_size: number
+          width: number | null
+          height: number | null
+          status: 'active' | 'orphaned' | 'deleted'
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          storage_path: string
+          original_filename?: string | null
+          mime_type: 'image/jpeg' | 'image/png' | 'image/webp'
+          file_size: number
+          width?: number | null
+          height?: number | null
+          status?: 'active' | 'orphaned' | 'deleted'
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          original_filename?: string | null
+          width?: number | null
+          height?: number | null
+          status?: 'active' | 'orphaned' | 'deleted'
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      mistake_question_images: {
+        Row: {
+          question_id: string
+          image_id: string
+          sort_order: number
+          created_at: string
+        }
+        Insert: {
+          question_id: string
+          image_id: string
+          sort_order?: number
+          created_at?: string
+        }
+        Update: {
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      mistake_worksheets: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          settings: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title?: string
+          settings?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          title?: string
+          settings?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      mistake_worksheet_questions: {
+        Row: {
+          worksheet_id: string
+          question_id: string
+          position: number
+          created_at: string
+        }
+        Insert: {
+          worksheet_id: string
+          question_id: string
+          position: number
+          created_at?: string
+        }
+        Update: {
+          position?: number
+        }
+        Relationships: []
+      }
+      mistake_ai_jobs: {
+        Row: {
+          id: string
+          user_id: string
+          operation: 'image_recognition'
+          status: 'queued' | 'processing' | 'succeeded' | 'failed' | 'cancelled'
+          progress: number
+          image_id: string | null
+          mode: 'vision'
+          idempotency_key: string
+          attempt_count: number
+          max_attempts: number
+          result: Json | null
+          error_message: string | null
+          created_at: string
+          started_at: string | null
+          finished_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          operation?: 'image_recognition'
+          status?: 'queued' | 'processing' | 'succeeded' | 'failed' | 'cancelled'
+          progress?: number
+          image_id?: string | null
+          mode: 'vision'
+          idempotency_key: string
+          attempt_count?: number
+          max_attempts?: number
+          result?: Json | null
+          error_message?: string | null
+          created_at?: string
+          started_at?: string | null
+          finished_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          status?: 'queued' | 'processing' | 'succeeded' | 'failed' | 'cancelled'
+          progress?: number
+          attempt_count?: number
+          result?: Json | null
+          error_message?: string | null
+          started_at?: string | null
+          finished_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      mark_orphaned_mistake_images: {
+        Args: { p_older_than?: string }
+        Returns: number
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}
+
+/**
+ * 便捷类型别名
+ */
+
+// 用户扩展信息类型
+export type Profile = Database['public']['Tables']['mistake_profiles']['Row']
+export type ProfileInsert = Database['public']['Tables']['mistake_profiles']['Insert']
+export type ProfileUpdate = Database['public']['Tables']['mistake_profiles']['Update']
+
+// 错题记录类型
+export interface QuestionImageAsset {
+  id: string
+  signedUrl: string
+  sortOrder: number
+  mimeType: string
+  fileSize: number
+  width: number | null
+  height: number | null
+}
+
+export type Question = Database['public']['Tables']['mistake_questions']['Row'] & {
+  images?: QuestionImageAsset[]
+}
+export type QuestionInsert = Database['public']['Tables']['mistake_questions']['Insert']
+export type QuestionUpdate = Database['public']['Tables']['mistake_questions']['Update']
+
+// AI生成题目类型
+export type AIGeneratedQuestion = Database['public']['Tables']['ai_generated_questions']['Row']
+export type AIGeneratedQuestionInsert = Database['public']['Tables']['ai_generated_questions']['Insert']
+export type AIGeneratedQuestionUpdate = Database['public']['Tables']['ai_generated_questions']['Update']
+
+// 草稿类型
+export type Draft = Database['public']['Tables']['mistake_drafts']['Row']
+export type DraftInsert = Database['public']['Tables']['mistake_drafts']['Insert']
+export type DraftUpdate = Database['public']['Tables']['mistake_drafts']['Update']
+
+// 私有题目图片类型
+export type MistakeImage = Database['public']['Tables']['mistake_images']['Row']
+export type QuestionImage = Database['public']['Tables']['mistake_question_images']['Row']
+
+export type Worksheet = Database['public']['Tables']['mistake_worksheets']['Row']
+export type AIJob = Database['public']['Tables']['mistake_ai_jobs']['Row']
+
+// 用户反馈类型
+export type Feedback = Database['public']['Tables']['mistake_feedbacks']['Row']
+export type FeedbackInsert = Database['public']['Tables']['mistake_feedbacks']['Insert']
+export type FeedbackUpdate = Database['public']['Tables']['mistake_feedbacks']['Update']
+
+// 难度枚举
+export type Difficulty = 'easy' | 'medium' | 'hard'
+
+// 反馈类别枚举
+export type FeedbackCategory = 'bug' | 'feature' | 'improvement' | 'other'
+
+// 反馈状态枚举
+export type FeedbackStatus = 'pending' | 'processing' | 'resolved' | 'closed'
+
+// 学科枚举（9个学科）
+export type Subject =
+  | 'math'        // 数学
+  | 'chinese'     // 语文
+  | 'english'     // 英语
+  | 'physics'     // 物理
+  | 'chemistry'   // 化学
+  | 'biology'     // 生物
+  | 'history'     // 历史
+  | 'geography'   // 地理
+  | 'politics'    // 政治
+
+/**
+ * 学科配置
+ */
+export const SUBJECTS: { id: Subject; label: string }[] = [
+  { id: 'math', label: '数学' },
+  { id: 'chinese', label: '语文' },
+  { id: 'english', label: '英语' },
+  { id: 'physics', label: '物理' },
+  { id: 'chemistry', label: '化学' },
+  { id: 'biology', label: '生物' },
+  { id: 'history', label: '历史' },
+  { id: 'geography', label: '地理' },
+  { id: 'politics', label: '政治' },
+]
+
+/**
+ * 难度配置
+ */
+export const DIFFICULTIES: { id: Difficulty; label: string; color: string }[] = [
+  { id: 'easy', label: '简单', color: 'green' },
+  { id: 'medium', label: '中等', color: 'yellow' },
+  { id: 'hard', label: '困难', color: 'red' },
+]
+
+/**
+ * 学科对应的知识点分类
+ */
+export const CATEGORIES: Record<Subject, string[]> = {
+  math: ['代数', '几何', '函数', '概率统计', '数列', '三角函数', '解析几何'],
+  chinese: ['阅读理解', '作文', '古诗文', '语言文字运用', '文学常识'],
+  english: ['阅读理解', '完形填空', '语法', '写作', '听力', '词汇'],
+  physics: ['力学', '电磁学', '热学', '光学', '原子物理'],
+  chemistry: ['无机化学', '有机化学', '物理化学', '分析化学'],
+  biology: ['细胞生物学', '遗传学', '生态学', '生理学'],
+  history: ['中国古代史', '中国近现代史', '世界史'],
+  geography: ['自然地理', '人文地理', '区域地理'],
+  politics: ['哲学', '经济学', '政治学', '文化生活'],
+}
+
+/**
+ * AI 错因标签配置
+ */
+export const MISTAKE_REASONS: { id: string; label: string; color: string }[] = [
+  { id: '概念不清', label: '概念不清', color: '#ef4444' },
+  { id: '计算失误', label: '计算失误', color: '#f59e0b' },
+  { id: '审题偏差', label: '审题偏差', color: '#3b82f6' },
+  { id: '思路卡壳', label: '思路卡壳', color: '#8b5cf6' },
+  { id: '方法混淆', label: '方法混淆', color: '#06b6d4' },
+  { id: '粗心大意', label: '粗心大意', color: '#10b981' },
+]

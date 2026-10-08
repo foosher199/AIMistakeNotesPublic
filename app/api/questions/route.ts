@@ -1,0 +1,224 @@
+/**
+ * Questions API - List & Create
+ *
+ * GET  /api/questions - 查询用户的错题列表
+ * POST /api/questions - 创建新错题
+ */
+
+import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+import { createAdminClient, getAuthClient } from '@/server/supabase'
+import { attachSignedQuestionImages } from '@/server/images'
+import {
+  CreateQuestionSchema,
+  QueryQuestionsSchema,
+  parseAndValidate,
+  formatValidationError,
+  UUIDSchema,
+} from '@/contracts/question'
+
+const DeleteQuestionsSchema = z.object({
+  ids: z.array(UUIDSchema).min(1).max(1000),
+})
+
+/**
+ * GET /api/questions
+ *
+ * 查询参数：
+ * - subject: 按学科筛选
+ * - difficulty: 按难度筛选
+ * - is_mastered: 按掌握状态筛选
+ * - search: 模糊搜索（题目内容或分类）
+ * - limit: 分页数量（默认50，最大1000）
+ * - offset: 分页偏移（默认0）
+ *
+ * 响应：
+ * {
+ *   questions: Question[],
+ *   total: number
+ * }
+ */
+export async function GET(request: NextRequest) {
+  try {
+    // 优先使用Bearer Token认证（iOS/Android），回退到Cookie认证（Web）
+    const authResult = await getAuthClient(request)
+    if (!authResult) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const { supabase, user } = authResult
+
+    // 解析查询参数
+    const { searchParams } = new URL(request.url)
+    const params = Object.fromEntries(searchParams)
+
+    const validationResult = parseAndValidate(QueryQuestionsSchema, params)
+
+    if (!validationResult.success) {
+      return NextResponse.json(
+        { error: formatValidationError(validationResult.error) },
+        { status: 400 }
+      )
+    }
+
+    const { subject, difficulty, is_mastered, search, limit, offset } = validationResult.data
+
+    // 构建查询（RLS 自动过滤 user_id）
+    let query = supabase
+      .from('mistake_questions')
+      .select('*', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1)
+
+    // 添加筛选条件
+    if (subject) {
+      query = query.eq('subject', subject)
+    }
+    if (difficulty) {
+      query = query.eq('difficulty', difficulty)
+    }
+    if (is_mastered !== undefined) {
+      query = query.eq('is_mastered', is_mastered)
+    }
+    if (search) {
+      // 使用 ilike 进行模糊搜索（不区分大小写）
+      query = query.or(`content.ilike.%${search}%,category.ilike.%${search}%`)
+    }
+
+    const { data: questions, error, count } = await query
+
+    if (error) {
+      console.error('Supabase query error:', error)
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    const questionsWithImages = await attachSignedQuestionImages(questions || [], user.id)
+    return NextResponse.json({
+      questions: questionsWithImages,
+      total: count ?? 0,
+    })
+  } catch (error) {
+    console.error('GET /api/questions error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+/**
+ * POST /api/questions
+ *
+ * 请求体：
+ * {
+ *   content: string,
+ *   subject: string,
+ *   category: string,
+ *   difficulty: 'easy' | 'medium' | 'hard',
+ *   answer: string,
+ *   user_answer?: string,
+ *   explanation?: string,
+ *   image_url?: string
+ * }
+ *
+ * 响应：
+ * {
+ *   question: Question
+ * }
+ */
+export async function POST(request: NextRequest) {
+  try {
+    // 优先使用Bearer Token认证（iOS/Android），回退到Cookie认证（Web）
+    const authResult = await getAuthClient(request)
+    if (!authResult) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const { supabase, user } = authResult
+
+    // 解析请求体
+    const body = await request.json()
+
+    // 验证数据
+    const validationResult = parseAndValidate(CreateQuestionSchema, body)
+
+    if (!validationResult.success) {
+      return NextResponse.json(
+        { error: formatValidationError(validationResult.error) },
+        { status: 400 }
+      )
+    }
+
+    const validatedData = validationResult.data
+
+    // 插入数据（RLS 会自动验证 user_id）
+    const { data: question, error } = await supabase
+      .from('mistake_questions')
+      .insert({
+        ...validatedData,
+        user_id: user.id, // 手动添加 user_id
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Supabase insert error:', error)
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ question }, { status: 201 })
+  } catch (error) {
+    console.error('POST /api/questions error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+/**
+ * DELETE /api/questions
+ *
+ * 批量删除当前用户的错题，并在图片不再被引用时标记为待清理。
+ */
+export async function DELETE(request: NextRequest) {
+  try {
+    const authResult = await getAuthClient(request)
+    if (!authResult) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const validation = DeleteQuestionsSchema.safeParse(await request.json())
+    if (!validation.success) {
+      return NextResponse.json({ error: '批量删除参数无效' }, { status: 400 })
+    }
+
+    const ids = [...new Set(validation.data.ids)]
+    const { data: ownedQuestions, error: ownedError } = await authResult.supabase
+      .from('mistake_questions')
+      .select('id')
+      .in('id', ids)
+    if (ownedError) return NextResponse.json({ error: ownedError.message }, { status: 500 })
+    if ((ownedQuestions || []).length !== ids.length) {
+      return NextResponse.json({ error: '部分题目不存在或无权删除' }, { status: 404 })
+    }
+
+    const admin = createAdminClient()
+    const { data: links } = await admin
+      .from('mistake_question_images')
+      .select('image_id')
+      .in('question_id', ids)
+    const { error: deleteError } = await authResult.supabase
+      .from('mistake_questions')
+      .delete()
+      .in('id', ids)
+    if (deleteError) return NextResponse.json({ error: deleteError.message }, { status: 500 })
+
+    for (const imageId of new Set((links || []).map((link) => link.image_id))) {
+      const [{ count: linkCount }, { count: draftCount }] = await Promise.all([
+        admin.from('mistake_question_images').select('*', { count: 'exact', head: true }).eq('image_id', imageId),
+        admin.from('mistake_drafts').select('*', { count: 'exact', head: true }).eq('source_image_id', imageId),
+      ])
+      if ((linkCount || 0) === 0 && (draftCount || 0) === 0) {
+        await admin
+          .from('mistake_images')
+          .update({ status: 'orphaned', updated_at: new Date().toISOString() })
+          .eq('id', imageId)
+      }
+    }
+
+    return NextResponse.json({ success: true, deletedCount: ids.length })
+  } catch (error) {
+    console.error('DELETE /api/questions error:', error)
+    return NextResponse.json({ error: '批量删除题目失败' }, { status: 500 })
+  }
+}

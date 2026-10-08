@@ -1,0 +1,334 @@
+'use client'
+
+import { useState } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowUp,
+  FileDown,
+  Loader2,
+  Pencil,
+  Plus,
+  Printer,
+  Save,
+  Trash2,
+  X,
+} from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import { useQuestions } from '@/hooks/useQuestions'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { normalizeWorksheetTitle } from '@/lib/worksheet-title'
+import { DIFFICULTIES, SUBJECTS, type Question } from '@/types/database'
+
+export interface WorksheetSettings {
+  columns: 1 | 2
+  answerMode: 'none' | 'end' | 'inline'
+  includeImages: boolean
+  answerLines: number
+  questionsPerPage: number
+}
+
+interface WorksheetBuilderProps {
+  questionIds: string[]
+  initialQuestions?: Question[]
+  worksheetId?: string
+  initialTitle?: string
+  initialSettings?: Partial<WorksheetSettings>
+}
+
+export function WorksheetBuilder({ questionIds, initialQuestions, worksheetId, initialTitle, initialSettings }: WorksheetBuilderProps) {
+  const router = useRouter()
+  const queryClient = useQueryClient()
+  const defaultTitle = normalizeWorksheetTitle(initialTitle || '错题练习卷')
+  const [title, setTitle] = useState(
+    defaultTitle
+  )
+  const [orderedIds, setOrderedIds] = useState(questionIds)
+  const [columns, setColumns] = useState<1 | 2>(initialSettings?.columns || 1)
+  const [answerMode, setAnswerMode] = useState<'none' | 'end' | 'inline'>(initialSettings?.answerMode || 'end')
+  const [includeImages, setIncludeImages] = useState(initialSettings?.includeImages ?? true)
+  const [answerLines, setAnswerLines] = useState(initialSettings?.answerLines ?? 3)
+  const [questionsPerPage, setQuestionsPerPage] = useState(initialSettings?.questionsPerPage ?? 6)
+  const [saving, setSaving] = useState(false)
+  const [isEditing, setIsEditing] = useState(!worksheetId)
+  const [questionToAdd, setQuestionToAdd] = useState('')
+  const questionsQuery = useQuestions(
+    { limit: 1000 },
+    { enabled: !initialQuestions || isEditing }
+  )
+  const availableQuestions = Array.from(
+    new Map(
+      [...(initialQuestions || []), ...(questionsQuery.data?.questions || [])].map(
+        (question) => [question.id, question]
+      )
+    ).values()
+  )
+  const questionMap = new Map(availableQuestions.map((question) => [question.id, question]))
+  const selected = orderedIds.map((id) => questionMap.get(id)).filter((question): question is Question => Boolean(question))
+  const questionsAvailableToAdd = availableQuestions.filter(
+    (question) => !orderedIds.includes(question.id)
+  )
+  const missingCount = orderedIds.length - selected.length
+
+  const move = (index: number, direction: -1 | 1) => {
+    const target = index + direction
+    if (target < 0 || target >= orderedIds.length) return
+    setOrderedIds((current) => {
+      const next = [...current]
+      ;[next[index], next[target]] = [next[target], next[index]]
+      return next
+    })
+  }
+
+  const addQuestion = () => {
+    if (!questionToAdd || orderedIds.includes(questionToAdd)) return
+    setOrderedIds((current) => [...current, questionToAdd])
+    setQuestionToAdd('')
+  }
+
+  const removeQuestion = (id: string) => {
+    setOrderedIds((current) => current.filter((questionId) => questionId !== id))
+    if (questionToAdd === id) setQuestionToAdd('')
+  }
+
+  const save = async () => {
+    if (!title.trim() || !orderedIds.length) return
+    setSaving(true)
+    try {
+      const response = await fetch(worksheetId ? `/api/worksheets/${worksheetId}` : '/api/worksheets', {
+        method: worksheetId ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title,
+          questionIds: orderedIds,
+          settings: { columns, answerMode, includeImages, answerLines, questionsPerPage },
+        }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || '保存失败')
+      await queryClient.invalidateQueries({ queryKey: ['worksheets'] })
+      toast.success(worksheetId ? '练习卷已更新' : '练习卷已保存')
+      if (worksheetId) {
+        await queryClient.invalidateQueries({ queryKey: ['worksheet', worksheetId] })
+        setIsEditing(false)
+      }
+      else if (data.worksheet?.id) router.replace(`/dashboard/worksheets/${data.worksheet.id}`)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '保存练习卷失败')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const cancelEditing = () => {
+    setTitle(defaultTitle)
+    setOrderedIds(questionIds)
+    setColumns(initialSettings?.columns || 1)
+    setAnswerMode(initialSettings?.answerMode || 'end')
+    setIncludeImages(initialSettings?.includeImages ?? true)
+    setAnswerLines(initialSettings?.answerLines ?? 3)
+    setQuestionsPerPage(initialSettings?.questionsPerPage ?? 6)
+    setQuestionToAdd('')
+    setIsEditing(false)
+  }
+
+  const saveAsPdf = () => {
+    toast.info('请在打印窗口中选择“另存为 PDF”')
+    window.print()
+  }
+
+  if (!initialQuestions && questionsQuery.isLoading) return <Loader2 className="mx-auto my-20 h-9 w-9 animate-spin text-[#3b82f6]" />
+  if (!initialQuestions && questionsQuery.error) {
+    return <div className="rounded border border-red-200 bg-red-50 p-5 text-red-600">加载练习卷题目失败：{questionsQuery.error.message}</div>
+  }
+  const pages = chunk(selected, questionsPerPage)
+
+  return (
+    <div className="worksheet-page space-y-7">
+      <div className="no-print flex flex-wrap items-center justify-between gap-3">
+        <Button asChild variant="ghost" className="gap-2 rounded-full text-[#52657d] hover:bg-[#f0f8f6] hover:text-[#159a78]">
+          <Link href={worksheetId ? '/dashboard/worksheets' : '/dashboard/questions'}>
+            <ArrowLeft className="h-4 w-4" />返回
+          </Link>
+        </Button>
+        <div className="flex flex-wrap justify-end gap-2">
+          {worksheetId && !isEditing && (
+            <Button variant="outline" className="gap-2 rounded-full border-[#dce8f3] hover:bg-[#f5fafc]" onClick={() => setIsEditing(true)}>
+              <Pencil className="h-4 w-4" />编辑
+            </Button>
+          )}
+          {worksheetId && isEditing && (
+            <Button variant="ghost" className="gap-2 rounded-full text-[#64748b]" onClick={cancelEditing} disabled={saving}>
+              <X className="h-4 w-4" />取消
+            </Button>
+          )}
+          {(!worksheetId || isEditing) && (
+            <Button onClick={save} disabled={saving || selected.length === 0} variant="outline" className="gap-2 rounded-full border-[#cfe0ef] hover:bg-[#f5fafc]">
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              {worksheetId ? '保存修改' : '保存'}
+            </Button>
+          )}
+          <Button onClick={saveAsPdf} variant="outline" className="gap-2 rounded-full border-[#dce8f3] hover:bg-[#f5fafc]">
+            <FileDown className="h-4 w-4" />保存为 PDF
+          </Button>
+          <Button onClick={() => window.print()} variant="jelly" className="gap-2 rounded-full px-5">
+            <Printer className="h-4 w-4" />打印
+          </Button>
+        </div>
+      </div>
+
+      {(!worksheetId || isEditing) && <section className="no-print rounded-[22px] border border-[#dce8f3] bg-white p-5 shadow-[0_10px_30px_rgba(58,108,150,0.07)]">
+        <div className="mb-5 flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#eaf3ff] text-[#3577d4]"><Pencil className="h-4 w-4" /></div><div><h1 className="text-xl font-semibold text-[#172b4d]">练习卷设置</h1><p className="mt-0.5 text-sm text-[#64748b]">设置版式、答案和答题空间</p></div></div>
+        {missingCount > 0 && (
+          <div className="mb-4 rounded-xl border border-[#f3dfab] bg-[#fffaf0] p-3 text-sm text-[#9a6b13]">
+            有 {missingCount} 道题已删除或当前无法访问，本练习卷仅显示其余 {selected.length} 道题。
+          </div>
+        )}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
+          <label className="space-y-2 text-sm lg:col-span-2"><span>标题</span><Input value={title} onChange={(event) => setTitle(event.target.value)} /></label>
+          <Select label="排版" value={columns} onChange={(value) => setColumns(Number(value) as 1 | 2)} options={[['1', '单栏'], ['2', '双栏']]} />
+          <Select label="答案" value={answerMode} onChange={(value) => setAnswerMode(value as typeof answerMode)} options={[['none', '不显示'], ['end', '卷尾答案'], ['inline', '题后答案']]} />
+          <label className="space-y-2 text-sm"><span>答题空行</span><Input type="number" min="0" max="10" value={answerLines} onChange={(event) => setAnswerLines(Math.min(10, Math.max(0, Number(event.target.value))))} /></label>
+          <Select label="每页题数" value={questionsPerPage} onChange={(value) => setQuestionsPerPage(Number(value))} options={[['4', '4 题'], ['6', '6 题'], ['8', '8 题'], ['10', '10 题']]} />
+          <label className="flex items-end gap-2 pb-2 text-sm"><input type="checkbox" checked={includeImages} onChange={(event) => setIncludeImages(event.target.checked)} className="h-4 w-4 accent-[#397ff0]" />包含原题图片</label>
+        </div>
+        <div className="mt-6 space-y-2 border-t border-[#edf2f7] pt-5">
+          <p className="text-sm font-medium">题目顺序</p>
+          {selected.map((question, index) => (
+            <div key={question.id} className="flex items-center gap-2 rounded-xl border border-[#e1eaf2] bg-[#fbfdff] px-3 py-2 text-sm transition-colors hover:border-[#cfe0ef] hover:bg-[#f7fbff]">
+              <span className="w-8 text-[#64748b]">{index + 1}.</span><span className="flex-1 truncate">{question.content}</span>
+              <Button variant="ghost" size="sm" disabled={index === 0} onClick={() => move(index, -1)}><ArrowUp className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="sm" disabled={index === selected.length - 1} onClick={() => move(index, 1)}><ArrowDown className="h-4 w-4" /></Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label={`删除第 ${index + 1} 题`}
+                className="text-[#f43f5e] hover:bg-[#ffe4e6] hover:text-[#f43f5e]"
+                onClick={() => removeQuestion(question.id)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+        <div className="mt-6 border-t border-[#edf2f7] pt-5">
+          <p className="mb-2 text-sm font-medium">添加题目</p>
+          {questionsQuery.error ? (
+            <p className="text-sm text-[#f43f5e]">加载可添加题目失败：{questionsQuery.error.message}</p>
+          ) : questionsQuery.isLoading ? (
+            <p className="flex items-center gap-2 text-sm text-[#64748b]">
+              <Loader2 className="h-4 w-4 animate-spin" />正在加载题目...
+            </p>
+          ) : questionsAvailableToAdd.length === 0 ? (
+            <p className="text-sm text-[#64748b]">没有其他可以添加的题目</p>
+          ) : (
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <select
+                value={questionToAdd}
+                onChange={(event) => setQuestionToAdd(event.target.value)}
+                className="h-10 min-w-0 flex-1 rounded-xl border border-[#dce8f3] bg-white px-3 text-sm outline-none transition focus:border-[#8bb8ed] focus:ring-2 focus:ring-[#eaf3ff]"
+              >
+                <option value="">选择要添加的题目</option>
+                {questionsAvailableToAdd.map((question) => (
+                  <option key={question.id} value={question.id}>
+                    {SUBJECTS.find((item) => item.id === question.subject)?.label || question.subject}
+                    {' · '}{question.content.slice(0, 80)}
+                  </option>
+                ))}
+              </select>
+              <Button type="button" variant="outline" className="gap-2 rounded-full border-[#cfe0ef]" disabled={!questionToAdd} onClick={addQuestion}>
+                <Plus className="h-4 w-4" />添加题目
+              </Button>
+            </div>
+          )}
+        </div>
+      </section>}
+
+      {selected.length === 0 ? (
+        <div className="rounded-[22px] border border-[#dce8f3] bg-white p-12 text-center text-[#64748b] shadow-[0_10px_30px_rgba(58,108,150,0.07)]">未找到所选题目，请返回错题库重新选择。</div>
+      ) : (
+        <div className="space-y-6 overflow-x-auto pb-2 print:space-y-0 print:overflow-visible print:pb-0">
+          {pages.map((pageQuestions, pageIndex) => (
+            <WorksheetPage key={pageIndex} title={title} page={pageIndex + 1} totalPages={pages.length} questions={pageQuestions} startIndex={pageIndex * questionsPerPage} columns={columns} includeImages={includeImages} answerLines={answerLines} answerMode={answerMode} />
+          ))}
+          {answerMode === 'end' && pages.map((pageQuestions, pageIndex) => (
+            <article key={`answers-${pageIndex}`} className="worksheet-sheet worksheet-physical-page mx-auto bg-white p-10 shadow-[0_8px_30px_rgba(58,108,150,0.06)]">
+              <h2 className="mb-5 border-b pb-2 text-xl font-bold">{title}－参考答案与解析（{pageIndex + 1}/{pages.length}）</h2>
+              {pageQuestions.map((question, index) => <Answer key={question.id} question={question} index={pageIndex * questionsPerPage + index + 1} />)}
+            </article>
+          ))}
+        </div>
+      )}
+
+      <style jsx global>{`
+        .worksheet-sheet { width: 210mm; min-height: 297mm; }
+        .worksheet-columns-2 { column-count: 2; column-gap: 12mm; }
+        @media print {
+          @page { size: A4; margin: 0; }
+          html, body { margin: 0 !important; background: white !important; }
+          nav, footer, .no-print { display: none !important; }
+          .dashboard-shell { min-height: 0 !important; background: white !important; }
+          .dashboard-content { padding-left: 0 !important; }
+          main { max-width: none !important; padding: 0 !important; }
+          .worksheet-page { display: block !important; }
+          .worksheet-sheet {
+            box-sizing: border-box;
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 !important;
+            padding: 12mm !important;
+            box-shadow: none !important;
+          }
+          .worksheet-physical-page { break-after: page; }
+          .worksheet-physical-page:last-child { break-after: auto; }
+        }
+      `}</style>
+    </div>
+  )
+}
+
+function WorksheetPage({ title, page, totalPages, questions, startIndex, columns, includeImages, answerLines, answerMode }: {
+  title: string; page: number; totalPages: number; questions: Question[]; startIndex: number; columns: 1 | 2; includeImages: boolean; answerLines: number; answerMode: 'none' | 'end' | 'inline'
+}) {
+  return (
+    <article className="worksheet-sheet worksheet-physical-page mx-auto bg-white p-10 shadow-[0_8px_30px_rgba(58,108,150,0.06)]">
+      <header className="mb-8 text-center">
+        <h1 className="text-2xl font-bold">{title || '错题练习卷'}</h1>
+        <div className="mt-5 flex justify-between border-b border-[#d4dee8] pb-2 text-sm text-[#52657d]"><span>姓名：____________</span><span>日期：____________</span><span>第 {page}/{totalPages} 页</span></div>
+      </header>
+      <div className={columns === 2 ? 'worksheet-columns-2' : ''}>
+        {questions.map((question, index) => (
+          <section key={question.id} className="worksheet-question mb-7 break-inside-avoid">
+            <div className="mb-2 flex gap-2 text-xs text-[#159a78]">
+              <span>{SUBJECTS.find((item) => item.id === question.subject)?.label || question.subject}</span><span>·</span><span>{question.category}</span><span>·</span><span>{DIFFICULTIES.find((item) => item.id === question.difficulty)?.label || question.difficulty}</span>
+            </div>
+            <p className="whitespace-pre-wrap leading-7"><strong>{startIndex + index + 1}.</strong> {question.content}</p>
+            {includeImages && (question.images?.length ? question.images : question.image_url ? [{ id: 'legacy', signedUrl: question.image_url }] : []).map((image, imageIndex) => (
+              <img key={image.id} src={image.signedUrl} alt={`第 ${startIndex + index + 1} 题图片 ${imageIndex + 1}`} className="mt-3 max-h-64 max-w-full object-contain" />
+            ))}
+            {Array.from({ length: answerLines }).map((_, line) => <div key={line} className="h-5" aria-hidden="true" />)}
+            {answerMode === 'inline' && <Answer question={question} />}
+          </section>
+        ))}
+      </div>
+    </article>
+  )
+}
+
+function Select({ label, value, onChange, options }: { label: string; value: string | number; onChange: (value: string) => void; options: string[][] }) {
+  return <label className="space-y-2 text-sm"><span>{label}</span><select value={value} onChange={(event) => onChange(event.target.value)} className="h-10 w-full rounded-xl border bg-white px-3">{options.map(([optionValue, text]) => <option key={optionValue} value={optionValue}>{text}</option>)}</select></label>
+}
+
+function Answer({ question, index }: { question: Pick<Question, 'answer' | 'explanation'>; index?: number }) {
+  return <div className="mt-4 break-inside-avoid rounded-xl border border-[#dce8f3] bg-[#f7fbff] p-3 text-sm"><p><strong>{index ? `${index}. ` : ''}答案：</strong>{question.answer}</p>{question.explanation && <p className="mt-2 whitespace-pre-wrap text-[#475569]"><strong>解析：</strong>{question.explanation}</p>}</div>
+}
+
+function chunk<T>(items: T[], size: number) {
+  const pages: T[][] = []
+  for (let index = 0; index < items.length; index += size) pages.push(items.slice(index, index + size))
+  return pages
+}
